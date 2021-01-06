@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Configures automatic LogGroup subscription to a Slack Alerter Lambda
+
+Parameters:
+  SlackWebhookUrl:
+    Type: String
+    Description: The url for the Slack webhooks to where to post events
+
+Resources:
+  SlackAlerter:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src/slack-alerter
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Timeout: 30
+      MemorySize: 1152
+      Role: !GetAtt SlackAlerterRole.Arn
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+  SlackAlerterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: SlackAlerterPolicy
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+  SlackAlerterCloudwatchPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SlackAlerter
+      Principal: logs.amazonaws.com
+  Subscriber:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src/subscriber
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Timeout: 30
+      MemorySize: 1152
+      Role: !GetAtt SubscriberRole.Arn
+      Environment:
+        Variables:
+          ALERTER_ARN: !GetAtt SlackAlerter.Arn
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+      Events:
+        CloudWatchEvent:
+          Type: CloudWatchEvent
+          Properties:
+            Pattern:
+              source:
+                - aws.logs
+              detail-type:
+                - AWS API Call via CloudTrail
+              detail:
+                eventSource:
+                  - logs.amazonaws.com
+                eventName:
+                  - CreateLogGroup
+  SubscriberRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: SlackAlerterPolicy
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeSubscriptionFilters
+            - logs:DeleteSubscriptionFilter
+            - logs:PutSubscriptionFilter
+            Resource: arn:aws:logs:*:*:*

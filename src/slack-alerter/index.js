@@ -95,11 +95,10 @@ function getEventData(logEvent) {
   //   '{"errorType":"TypeError","errorMessage":"Cannot read property \'x\' of undefined","stack":["TypeError: Cannot read property \'x\' of undefined","    at Runtime.exports.main [as handler] (/var/task/services/webhooks/webpack:/tmp/example.js:1:1)","    at Runtime.handleOnce (/var/runtime/Runtime.js:66:25)"]}\n'
   // ]
   if(messageArray.length === 5) {
-    const errorMessage = JSON.parse(messageArray[4]);
     return {
       timestamp: messageArray[0],
-      errorType: errorMessage.errorType,
-      errorMessage: JSON.stringify(errorMessage, null, 2),
+      errorType: 'Unhandled Exception',
+      errorMessage: tryJsonFormatMessage(messageArray[4]),
     }
   }
   // Timeout

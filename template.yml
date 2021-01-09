@@ -92,7 +92,8 @@ Resources:
             - logs:CreateLogGroup
             - logs:CreateLogStream
             - logs:PutLogEvents
-            - logs:DescribeSubscriptionFilters
-            - logs:DeleteSubscriptionFilter
             - logs:PutSubscriptionFilter
             Resource: arn:aws:logs:*:*:*
+Outputs:
+  AlerterArn:
+    Value: !GetAtt SlackAlerter.Arn

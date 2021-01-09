@@ -1,4 +1,6 @@
 cfn.yml
 samconfig.toml
-
+console.json
+exception.json
+timeout.json
 *.DS_Store

@@ -23,6 +23,8 @@ exports.handler = async function(event)  {
           type: 'mrkdwn',
           text: `Subscribed to *${logGroupName}* in *${region}* on account ${account}`,
         }
+      }, {
+        type: 'divider'
       }]
     });
     console.log(`Subscribed to ${logGroupName} in ${region} on account ${account}`);

@@ -33,7 +33,9 @@ function toSlackFormat(event) {
         type: 'mrkdwn',
         text: `\`\`\`${errorMessage.substring(0, 2000)}\`\`\``
       }
-    }];
+    }, {
+			type: 'divider'
+		}];
   })
 
   return {

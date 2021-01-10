@@ -1,6 +1,7 @@
 const https = require('https');
 const util = require('util');
 const zlib = require('zlib');
+const JSON5 = require('json5');
 const gunzip = util.promisify(zlib.gunzip);
 
 exports.handler = async function(event)  {
@@ -22,7 +23,7 @@ function toSlackFormat(event) {
       type: 'section',
       fields: [{
         type: 'mrkdwn',
-        text: `Timestamp:\n*${timestamp.replace('T', ' ').substring(0, 19)} UTC*`
+        text: `Timestamp:\n*${timestamp.replace('T', ' ').replace('Z', ' UTC')}*`
       },{
         type: 'mrkdwn',
         text: `Error Type:\n*${errorType}*`
@@ -31,7 +32,7 @@ function toSlackFormat(event) {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `\`\`\`${errorMessage.substring(0, 2000)}\`\`\``
+        text: `\`\`\`\n${errorMessage.substring(0, 2990)}\n\`\`\``, // Max 3000 chars in a Slack block
       }
     }, {
 			type: 'divider'
@@ -59,6 +60,62 @@ function toSlackFormat(event) {
   };
 }
 
+function logGroupUrl(logGroup, logStream, region) {
+  return `https://${region}.console.aws.amazon.com/cloudwatch/home?region=${region}#logsV2:log-groups/log-group/${encodeURIComponent(encodeURIComponent(logGroup))}/log-events/${encodeURIComponent(encodeURIComponent(logStream))}`
+}
+
+function getEventData(logEvent) {
+  const messageArray = logEvent.message.trim().split('\t');
+  // Unhandled exception
+  // [
+  // '2021-01-09T20:56:33.421Z',
+  // '43871784-d045-449f-b91b-d0e26c865485',
+  // 'ERROR',
+  // 'Invoke Error ',
+  // '{"errorType": "ReferenceError", "errorMessage": "x is not defined", "stack": [ "ReferenceError: x is not defined", "    at Runtime.exports.handler (/var/task/lambda.js:13:5)", "    at Runtime.handleOnce (/var/runtime/Runtime.js:66:25)"]}'
+  // ]
+  if(messageArray.length === 5) {
+    return {
+      timestamp: messageArray[0],
+      errorType: messageArray[3].trim(),
+      errorMessage: tryJsonFormatMessage(messageArray[4]),
+    }
+  }
+  // Timeout
+  // ['2021-01-09T20:56:36.472Z 5d01b916-f8b8-4c27-9457-24cdc7e51813 Task timed out after 2.00 seconds']
+  if(messageArray.length === 1) {
+    const [timestamp, _, ...errorMessage] = messageArray[0].split(' ');
+    return {
+      timestamp,
+      errorType: 'Timeout',
+      errorMessage: errorMessage.join(' ').trim(),
+    }
+  }
+
+  // console.error
+  // [
+  //   '2021-01-09T20:56:32.120Z',
+  //   'c5dc7d60-0654-42cd-98b0-c50ef5108925',
+  //   'ERROR',
+  //   "{ test: 'console' }"
+  // ]
+  return {
+    timestamp: messageArray[0],
+    errorType: 'console.error()',
+    errorMessage: tryJsonFormatMessage(messageArray[3]),
+  }
+}
+
+// When console.error({test: 'console'}) it is logged as "{ test: 'console' }"
+// Not valid JSON, but valid JSON5
+function tryJsonFormatMessage(string) {
+  try {
+    return JSON5.stringify(JSON5.parse(string), null, 2);
+  } catch {
+    return string;
+  }
+}
+
 function postToSlack(payload) {
   return new Promise((resolve, reject) => {
     const slackUrl = new URL(process.env.SLACK_WEBHOOK_URL);
@@ -80,58 +137,4 @@ function postToSlack(payload) {
     req.write(JSON.stringify(payload));
     req.end();
   });
-}
-
-function logGroupUrl(logGroup, logStream, region) {
-  return `https://${region}.console.aws.amazon.com/cloudwatch/home?region=${region}#logsV2:log-groups/log-group/${encodeURIComponent(encodeURIComponent(logGroup))}/log-events/${encodeURIComponent(encodeURIComponent(logStream))}`
-}
-
-function getEventData(logEvent) {
-  const messageArray = logEvent.message.split('\t');
-  // Unhandled exception
-  // [
-  //   '2020-09-04T00:38:00.810Z',
-  //   'd440b814-371d-4077-a11d-47615727f4ec',
-  //   'ERROR',
-  //   'Invoke Error ',
-  //   '{"errorType":"TypeError","errorMessage":"Cannot read property \'x\' of undefined","stack":["TypeError: Cannot read property \'x\' of undefined","    at Runtime.exports.main [as handler] (/var/task/services/webhooks/webpack:/tmp/example.js:1:1)","    at Runtime.handleOnce (/var/runtime/Runtime.js:66:25)"]}\n'
-  // ]
-  if(messageArray.length === 5) {
-    return {
-      timestamp: messageArray[0],
-      errorType: 'Unhandled Exception',
-      errorMessage: tryJsonFormatMessage(messageArray[4]),
-    }
-  }
-  // Timeout
-  // ['2020-09-06T13:57:55.672Z 64cad227-917f-4159-8791-f1c3818dc206 Task timed out after 1.00 seconds\n\n']
-  if(messageArray.length === 1) {
-    const [timestamp, _, ...errorMessage] = messageArray[0].split(' ');
-    return {
-      timestamp,
-      errorType: 'Timeout',
-      errorMessage: errorMessage.join(' '),
-    }
-  }
-
-  // console.error
-  // [
-  //     '2020-09-06T13:02:05.184Z',
-  //     '466e6c7a-8cbf-4e53-bbf2-3409486f4b59',
-  //     'ERROR',
-  //     'THIS IS A CONSOLE ERROR TYPE\n'
-  // ]
-  return {
-    timestamp: messageArray[0],
-    errorType: 'console.error()',
-    errorMessage: tryJsonFormatMessage(messageArray[3]),
-  }
-}
-
-function tryJsonFormatMessage(string) {
-  try {
-    return JSON.stringify(JSON.parse(string), null, 2);
-  } catch {
-    return string;
-  }
 }

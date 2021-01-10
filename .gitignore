@@ -4,3 +4,4 @@ console.json
 exception.json
 timeout.json
 *.DS_Store
+node_modules

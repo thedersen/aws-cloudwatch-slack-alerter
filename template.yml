@@ -6,6 +6,11 @@ Parameters:
   SlackWebhookUrl:
     Type: String
     Description: The url for the Slack webhooks to where to post events
+  SubscriptionRegex:
+    Type: String
+    Description: RegEx filter to test all log groups against before subscribing
+    Default: .*[Pp]roduction.*
+
 
 Resources:
   SlackAlerter:
@@ -59,6 +64,7 @@ Resources:
         Variables:
           ALERTER_ARN: !GetAtt SlackAlerter.Arn
           SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          SUBSCRIPTION_REGEX: !Ref SubscriptionRegex
       Events:
         CloudWatchEvent:
           Type: CloudWatchEvent

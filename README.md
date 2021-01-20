@@ -4,7 +4,7 @@ Monitor AWS Lambda errors and send alerts to a specified Slack channel.
 
 ## Resources
 ### Subscriber
-The subscriber lambda is invoked any time a new log group is created. If the name of the log group contains `[Pp]roduction`, it creates a new log subscription filter with the `Alerter` lambda as destination. The filter includes all unhandled exceptions, timeouts and any message logged with `console.error()`.
+The subscriber lambda is invoked any time a new log group is created. If the name of the log group matches the specified regex (default `.*[Pp]roduction.*`), it creates a new log subscription filter with the `Alerter` lambda as destination. The filter includes all unhandled exceptions, timeouts and any message logged with `console.error()`.
 
 
 ### Alerter
@@ -24,4 +24,4 @@ $ python3 src/init_account_alerting.py --destination arn:aws:lambda:eu-central-1
 
 ## Credits
 
-This is based off of the work by [cplankey](https://github.com/cplankey/lambda-errors-to-slack) and code from [aws-samples](https://github.com/aws-samples/amazon-cloudwatch-log-centralizer).
+This is based on the work by [cplankey](https://github.com/cplankey/lambda-errors-to-slack) and code from [aws-samples](https://github.com/aws-samples/amazon-cloudwatch-log-centralizer).

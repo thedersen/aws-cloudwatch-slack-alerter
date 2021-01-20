@@ -7,7 +7,7 @@ exports.handler = async function(event)  {
   const {logGroupName} = detail.requestParameters;
   const region = process.env.AWS_REGION;
 
-  if (logGroupName.toLowerCase().includes('production')) {
+  if (new RegExp(process.env.SUBSCRIPTION_REGEX).test(logGroupName)) {
     const params = {
       logGroupName,
       destinationArn: process.env.ALERTER_ARN,

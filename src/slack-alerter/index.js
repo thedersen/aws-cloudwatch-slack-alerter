@@ -99,7 +99,7 @@ function getEventData(logEvent) {
       timestamp: messageArray[0],
       errorType: messageArray[3].trim(),
       errorMessage: tryJsonFormatMessage(messageArray[4]),
-      emoji: messageArray[2] === 'INFO' ? ':grey_exclamation:' : ':bangbang',
+      emoji: messageArray[2] === 'INFO' ? ':grey_exclamation:' : ':bangbang:',
     }
   }
   // Timeout
@@ -110,7 +110,7 @@ function getEventData(logEvent) {
       timestamp,
       errorType: 'Timeout',
       errorMessage: errorMessage.join(' ').trim(),
-      emoji: ':bangbang',
+      emoji: ':bangbang:',
     }
   }
 
@@ -125,7 +125,7 @@ function getEventData(logEvent) {
     timestamp: messageArray[0],
     errorType: 'console.error()',
     errorMessage: tryJsonFormatMessage(messageArray[3]),
-    emoji: ':bangbang',
+    emoji: ':bangbang:',
   }
 }
 
@@ -135,7 +135,7 @@ function tryJsonFormatMessage(string) {
   try {
     return JSON5.stringify(JSON5.parse(string), null, 2);
   } catch {
-    return string;
+    return string.trim();
   }
 }
 

@@ -4,7 +4,7 @@ Monitor AWS Lambda errors and send alerts to a specified Slack channel.
 
 ## Resources
 ### Subscriber
-The subscriber lambda is invoked any time a new log group is created. If the name of the log group matches the specified regex (default `.*[Pp]roduction.*`), it creates a new log subscription filter with the `Alerter` lambda as destination. The filter includes all unhandled exceptions, timeouts and any message logged with `console.error()`.
+The subscriber lambda is invoked any time a new log group is created. If the name of the log group matches the specified regex (default `.*[Pp]roduction.*`), it creates a new log subscription filter with the `Alerter` lambda as destination. The filter includes all unhandled exceptions, timeouts and any message logged with `console.error()` or `console.log('ALERT\t', ...)`.
 
 
 ### Alerter

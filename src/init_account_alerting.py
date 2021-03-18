@@ -44,7 +44,7 @@ def add_subscription_filter(log_group_name, destination_arn):
     log_client.put_subscription_filter(
         logGroupName=log_group_name,
         filterName='SlackAlerter',
-        filterPattern='?"Error: Runtime exited" ?"Task timed out after" ?"\tERROR\t" ?"\\"level\\":\\"error\\""',
+        filterPattern='?"Error: Runtime exited" ?"Task timed out after" ?"\tERROR\t" ?"\\"level\\":\\"error\\"" ?"\tINFO\tALERT\t"',
         destinationArn=destination_arn
     )
 

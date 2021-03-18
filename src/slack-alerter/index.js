@@ -18,7 +18,7 @@ function toSlackFormat(event) {
   const functionName = logGroup.split('/').pop();
 
   const blocks = logEvents.flatMap(e => {
-    const {timestamp, errorType, errorMessage} = getEventData(e);
+    const {timestamp, errorType, errorMessage, emoji} = getEventData(e);
     return [{
       type: 'section',
       fields: [{
@@ -26,7 +26,7 @@ function toSlackFormat(event) {
         text: `Timestamp:\n*${timestamp.replace('T', ' ').replace('Z', ' UTC')}*`
       },{
         type: 'mrkdwn',
-        text: `Error Type:\n*${errorType}*`
+        text: `Alert Type:\n*${emoji} ${errorType}*`
       }]
     }, {
       type: 'section',
@@ -39,6 +39,7 @@ function toSlackFormat(event) {
 		}];
   })
 
+  const fn = functionName.split('-');
   return {
     text: `Error in ${functionName}`,
     blocks: [{
@@ -47,6 +48,15 @@ function toSlackFormat(event) {
         type: 'mrkdwn',
         text: `Log Group:\n*<${logGroupUrl(logGroup, logStream, region)}|${logGroup}>*`
       }
+    },{
+      type: 'section',
+      fields: [{
+        type: 'mrkdwn',
+        text: `Application:\n*${fn[0]}*`
+      },{
+        type: 'mrkdwn',
+        text: `Lambda:\n*${fn[1]}*`
+      }]
     },{
       type: 'section',
       fields: [{
@@ -66,6 +76,7 @@ function logGroupUrl(logGroup, logStream, region) {
 
 function getEventData(logEvent) {
   const messageArray = logEvent.message.trim().split('\t');
+  console.log(messageArray);
   // Unhandled exception
   // [
   // '2021-01-09T20:56:33.421Z',
@@ -74,11 +85,21 @@ function getEventData(logEvent) {
   // 'Invoke Error ',
   // '{"errorType": "ReferenceError", "errorMessage": "x is not defined", "stack": [ "ReferenceError: x is not defined", "    at Runtime.exports.handler (/var/task/lambda.js:13:5)", "    at Runtime.handleOnce (/var/runtime/Runtime.js:66:25)"]}'
   // ]
+  // OR
+  // Alerts
+  // [
+  // '2021-01-09T20:56:33.421Z',
+  // '43871784-d045-449f-b91b-d0e26c865485',
+  // 'INFO',
+  // 'ALERT',
+  // 'Something nice happened:)'
+  // ]
   if(messageArray.length === 5) {
     return {
       timestamp: messageArray[0],
       errorType: messageArray[3].trim(),
       errorMessage: tryJsonFormatMessage(messageArray[4]),
+      emoji: messageArray[2] === 'INFO' ? ':grey_exclamation:' : ':bangbang',
     }
   }
   // Timeout
@@ -89,6 +110,7 @@ function getEventData(logEvent) {
       timestamp,
       errorType: 'Timeout',
       errorMessage: errorMessage.join(' ').trim(),
+      emoji: ':bangbang',
     }
   }
 
@@ -103,6 +125,7 @@ function getEventData(logEvent) {
     timestamp: messageArray[0],
     errorType: 'console.error()',
     errorMessage: tryJsonFormatMessage(messageArray[3]),
+    emoji: ':bangbang',
   }
 }
 

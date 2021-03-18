@@ -12,7 +12,7 @@ exports.handler = async function(event)  {
       logGroupName,
       destinationArn: process.env.ALERTER_ARN,
       filterName: 'SlackAlerter',
-      filterPattern: '?"Error: Runtime exited" ?"Task timed out after" ?"\tERROR\t" ?"\\"level\\":\\"error\\""'
+      filterPattern: '?"Error: Runtime exited" ?"Task timed out after" ?"\tERROR\t" ?"\\"level\\":\\"error\\"" ?"\tINFO\tALERT\t"'
     };
     await cw.putSubscriptionFilter(params).promise();
     await postToSlack({

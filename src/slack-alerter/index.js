@@ -37,11 +37,12 @@ function toSlackFormat(event) {
     }, {
 			type: 'divider'
 		}];
-  })
+  });
 
   const fn = functionName.split('-');
+  const {errorType} = getEventData(logEvents[0]);
   return {
-    text: `Error in ${functionName}`,
+    text: `${errorType} in ${functionName}`,
     blocks: [{
       type: 'section',
       text: {
@@ -76,7 +77,6 @@ function logGroupUrl(logGroup, logStream, region) {
 
 function getEventData(logEvent) {
   const messageArray = logEvent.message.trim().split('\t');
-  console.log(messageArray);
   // Unhandled exception
   // [
   // '2021-01-09T20:56:33.421Z',

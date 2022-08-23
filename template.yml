@@ -18,7 +18,7 @@ Resources:
     Properties:
       CodeUri: ./src/slack-alerter
       Handler: index.handler
-      Runtime: nodejs12.x
+      Runtime: nodejs16.x
       Timeout: 30
       MemorySize: 1152
       Role: !GetAtt SlackAlerterRole.Arn

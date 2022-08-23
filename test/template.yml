@@ -9,6 +9,6 @@ Resources:
       FunctionName: SlackAlerterTestProduction
       CodeUri: .
       Handler: lambda.handler
-      Runtime: nodejs12.x
+      Runtime: nodejs16.x
       Timeout: 2
       MemorySize: 1152

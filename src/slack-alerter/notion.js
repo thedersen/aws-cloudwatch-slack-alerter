@@ -5,7 +5,13 @@ const notion = new Client({ auth: process.env.NOTION_KEY })
 async function addPage(clientId, name) {
   try {
     const response = await notion.pages.create({
-      parent: { database_id: process.env.NOTION_TASKS_DB },
+      parent: {
+        database_id: process.env.NOTION_TASKS_DB,
+      },
+      icon: {
+        type: 'external',
+        external: { url: 'https://www.notion.so/icons/bug_red.svg' }
+      },
       properties: {
         Name: {
           title:[
@@ -129,7 +135,7 @@ async function appendBlock(pageId, timestampFormatted, code, logGroup, logGroupU
               rich_text: [{
                 type: 'text',
                 text: {
-                  content: code
+                  content: code.substring(0, 2000), // Max 2000 chars in a Notion block
                 }
               }],
               language: 'javascript',

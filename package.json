@@ -1,0 +1,8 @@
+{
+  "name": "slack-alerter",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.332.0"
+  }
+}

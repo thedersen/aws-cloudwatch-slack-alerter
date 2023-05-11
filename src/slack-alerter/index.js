@@ -1,78 +1,46 @@
-const https = require('https');
-const util = require('util');
-const zlib = require('zlib');
-const JSON5 = require('json5');
-const gunzip = util.promisify(zlib.gunzip);
+import JSON5 from 'json5';
+import { gunzipSync } from 'zlib';
+import { postToSlack } from './slack.js';
+import { postToNotion} from './notion.js';
 
-exports.handler = async function(event)  {
+export async function handler(event)  {
   const payload = Buffer.from(event.awslogs.data, 'base64');
-  const gunzipped = await gunzip(payload);
-  const eventDetails = JSON.parse(gunzipped.toString('utf8'));
+  const gunzipped = gunzipSync(payload).toString('utf8');
+  const eventDetails = JSON.parse(gunzipped);
 
-  await postToSlack(toSlackFormat(eventDetails));
+  const events = getEvents(eventDetails);
+
+  await Promise.all([
+    postToNotion(events),
+    postToSlack(events)
+  ]);
 }
 
-function toSlackFormat(event) {
-  const {owner, logGroup, logStream, logEvents} = event;
+function getEvents(eventDetails) {
+  const {owner, logGroup, logStream, logEvents} = eventDetails;
   const region = process.env.AWS_REGION;
   const functionName = logGroup.split('/').pop();
+  const [application, functionLogicalId] = functionName.split('-');
+  const logGroupUrl = getLogGroupUrl(logGroup, logStream, region);
 
-  const blocks = logEvents.flatMap(e => {
+  return logEvents.flatMap(e => {
     const {timestamp, errorType, errorMessage, emoji} = getEventData(e);
-    return [{
-      type: 'section',
-      fields: [{
-        type: 'mrkdwn',
-        text: `Timestamp:\n*${timestamp.replace('T', ' ').replace('Z', ' UTC')}*`
-      },{
-        type: 'mrkdwn',
-        text: `Alert Type:\n*${emoji} ${errorType}*`
-      }]
-    }, {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: `\`\`\`\n${errorMessage.substring(0, 2990)}\n\`\`\``, // Max 3000 chars in a Slack block
-      }
-    }, {
-			type: 'divider'
-		}];
+
+    return {
+      timestamp,
+      timestampFormatted: formatDate(timestamp),
+      account: owner,
+      functionName,
+      application,
+      functionLogicalId,
+      region,
+      errorType,
+      errorMessage,
+      emoji,
+      logGroup,
+      logGroupUrl,
+    }
   });
-
-  const fn = functionName.split('-');
-  const {errorType} = getEventData(logEvents[0]);
-  return {
-    text: `${errorType} in ${functionName}`,
-    blocks: [{
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: `Log Group:\n*<${logGroupUrl(logGroup, logStream, region)}|${logGroup}>*`
-      }
-    },{
-      type: 'section',
-      fields: [{
-        type: 'mrkdwn',
-        text: `Application:\n*${fn[0]}*`
-      },{
-        type: 'mrkdwn',
-        text: `Lambda:\n*${fn[1]}*`
-      }]
-    },{
-      type: 'section',
-      fields: [{
-        type: 'mrkdwn',
-        text: `Account:\n*${owner}*`
-      },{
-        type: 'mrkdwn',
-        text: `Region:\n*${region}*`
-      }]
-    }, ...blocks]
-  };
-}
-
-function logGroupUrl(logGroup, logStream, region) {
-  return `https://${region}.console.aws.amazon.com/cloudwatch/home?region=${region}#logsV2:log-groups/log-group/${encodeURIComponent(encodeURIComponent(logGroup))}/log-events/${encodeURIComponent(encodeURIComponent(logStream))}`
 }
 
 function getEventData(logEvent) {
@@ -105,7 +73,7 @@ function getEventData(logEvent) {
   // Timeout
   // ['2021-01-09T20:56:36.472Z 5d01b916-f8b8-4c27-9457-24cdc7e51813 Task timed out after 2.00 seconds']
   if(messageArray.length === 1) {
-    const [timestamp, _, ...errorMessage] = messageArray[0].split(' ');
+    const [timestamp, id, ...errorMessage] = messageArray[0].split(' ');
     return {
       timestamp,
       errorType: 'Timeout',
@@ -139,25 +107,30 @@ function tryJsonFormatMessage(string) {
   }
 }
 
-function postToSlack(payload) {
-  return new Promise((resolve, reject) => {
-    const slackUrl = new URL(process.env.SLACK_WEBHOOK_URL);
-    const options = {
-      method: 'POST',
-        hostname: slackUrl.hostname,
-        path: slackUrl.pathname,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-    };
-    const req = https.request(options, () => {
-      resolve('Success');
-    });
-    req.on('error', (e) => {
-      reject(e.message);
-    });
+function getLogGroupUrl(logGroup, logStream, region) {
+  return `https://${region}.console.aws.amazon.com/cloudwatch/home?region=${region}#logsV2:log-groups/log-group/${encodeURIComponent(encodeURIComponent(logGroup))}/log-events/${encodeURIComponent(encodeURIComponent(logStream))}`
+}
 
-    req.write(JSON.stringify(payload));
-    req.end();
-  });
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  const optionsDate = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Europe/Oslo',
+  };
+  const optionsTime = {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'Europe/Oslo',
+    timeZoneName: 'short'
+  };
+
+  // Only way to get the format YYYY-MM-DD hh:mm:ss GMT+2 as far as I know...
+  const datePart = Intl.DateTimeFormat('sv-SE', optionsDate).format(date);
+  const timePart = Intl.DateTimeFormat('en-US', optionsTime).format(date);
+
+  return `${datePart} ${timePart}`;
 }

@@ -19,7 +19,7 @@ The alerter lambda is invoked by CloudWatch Logs when an error is logged. It par
 If you have existing log groups you want to add the subscription filter to, run the `init_account_alerting.py` script with the `AlerterArn` outputted by sam deploy:
 
 ```
-$ python3 src/init_account_alerting.py --destination arn:aws:lambda:eu-central-1:xxxxxx:function:SlackAlerter
+$ python3 init_account_alerting.py --destination arn:aws:lambda:eu-central-1:xxxxxx:function:SlackAlerter
 ```
 
 ## Credits

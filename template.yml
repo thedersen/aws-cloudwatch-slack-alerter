@@ -10,21 +10,37 @@ Parameters:
     Type: String
     Description: RegEx filter to test all log groups against before subscribing
     Default: .*[Pp]roduction.*
+  NotionKey:
+    Type: String
+    Description: The API key for Notion
+  NotionClientsDB:
+    Type: String
+    Description: The ID for the Notion DB where to look up clients by AWS Account
+  NotionTasksDB:
+    Type: String
+    Description: The ID for the Notion DB where to post errors
 
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Handler: index.handler
+    Runtime: nodejs18.x
+    Architectures:
+      - arm64
 
 Resources:
   SlackAlerter:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ./src/slack-alerter
-      Handler: index.handler
-      Runtime: nodejs16.x
-      Timeout: 30
-      MemorySize: 1152
       Role: !GetAtt SlackAlerterRole.Arn
       Environment:
         Variables:
           SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          NOTION_KEY: !Ref NotionKey
+          NOTION_CLIENTS_DB: !Ref NotionClientsDB
+          NOTION_TASKS_DB: !Ref NotionTasksDB
   SlackAlerterRole:
     Type: AWS::IAM::Role
     Properties:
@@ -55,10 +71,6 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ./src/subscriber
-      Handler: index.handler
-      Runtime: nodejs12.x
-      Timeout: 30
-      MemorySize: 1152
       Role: !GetAtt SubscriberRole.Arn
       Environment:
         Variables:
@@ -70,10 +82,6 @@ Resources:
           Type: CloudWatchEvent
           Properties:
             Pattern:
-              source:
-                - aws.logs
-              detail-type:
-                - AWS API Call via CloudTrail
               detail:
                 eventSource:
                   - logs.amazonaws.com
@@ -100,6 +108,12 @@ Resources:
             - logs:PutLogEvents
             - logs:PutSubscriptionFilter
             Resource: arn:aws:logs:*:*:*
+  SlackAlerterTester:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SlackAlerter-SlackAlerterTesterProduction
+      CodeUri: ./src/tester
+      Timeout: 2
 Outputs:
   AlerterArn:
     Value: !GetAtt SlackAlerter.Arn

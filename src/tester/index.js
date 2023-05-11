@@ -2,7 +2,11 @@ function sleep(s) {
   return new Promise(resolve => setTimeout(resolve, s * 1000));
 }
 
-exports.handler = async function(event) {
+export async function handler(event) {
+  if (event.test === 'alert') {
+    console.log('ALERT\t', 'Alert alert');
+    return;
+  }
   if (event.test === 'console') {
     console.error(event);
     console.error('Plain text error');

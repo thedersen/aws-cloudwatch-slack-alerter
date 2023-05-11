@@ -1,7 +1,5 @@
 cfn.yml
-samconfig.toml
-console.json
-exception.json
-timeout.json
+test/*
 *.DS_Store
 node_modules
+.aws-sam
